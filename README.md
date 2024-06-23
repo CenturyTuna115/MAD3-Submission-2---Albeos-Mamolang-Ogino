@@ -1,0 +1,7 @@
+See all posts (albeos)
+See the details of a specific post (albeos)
+Add a new post and see it in the overall list (POST /posts) (albeos)
+Delete a post (resource will not be really updated on the server but it will be faked as if) therefore find a way to make it seem as if it was added in the UI (ogino)
+Edit a post (PUT) resource will not be really updated on the server but it will be faked as if) therefore find a way to make it seem as if it was added in the UI (ogino)
+Delete a post (resource will not be really updated on the server but it will be faked as if) therefore find a way to make it seem as if it was deleted in the UI (mamolang)
+Ensure aesthetics and validation for inputs. (mamolang)
