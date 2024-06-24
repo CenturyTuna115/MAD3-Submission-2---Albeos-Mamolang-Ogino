@@ -52,39 +52,54 @@ class _RestDemoScreenState extends State<RestDemoScreen> {
 
               if (!controller.working) {
                 return Center(
-                  child: SingleChildScrollView(
+                  child: ListView.builder(
                       padding: const EdgeInsets.all(16),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (Post post in controller.postList)
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              margin: const EdgeInsets.only(bottom: 8),
-                              decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.blueAccent),
-                                  borderRadius: BorderRadius.circular(16)),
-                              child: Row(
+                      itemCount: controller.postList.length,
+                      itemBuilder: (context, index) {
+                        Post post = controller.postList[index];
+                        return Container(
+                          padding: const EdgeInsets.all(8),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                              border: Border.all(color: Colors.blueAccent),
+                              borderRadius: BorderRadius.circular(16)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(post.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              SizedBox(height: 8),
+                              Text(post.body, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Expanded(child: Text(post.toString())),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit),
+                                  TextButton(
                                     onPressed: () {
-                                      showEditPostFunction(context, post);
+                                      viewDetails(context, post.id);
                                     },
+                                    child: const Text("View Details"),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete),
-                                    onPressed: () {
-                                      controller.deletePost(post.id);
-                                    },
-                                  ),
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit),
+                                        onPressed: () {
+                                          showEditPostFunction(context, post);
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete),
+                                        onPressed: () {
+                                          controller.deletePost(post.id);
+                                        },
+                                      ),
+                                    ],
+                                  )
                                 ],
-                              ),
-                            )
-                        ],
-                      )),
+                              )
+                            ],
+                          ),
+                        );
+                      }),
                 );
               }
               return const Center(
@@ -104,6 +119,69 @@ class _RestDemoScreenState extends State<RestDemoScreen> {
 
   showEditPostFunction(BuildContext context, Post post) {
     EditPostDialog.show(context, controller: controller, post: post);
+  }
+
+  viewDetails(BuildContext context, int postId) {
+    PostDetailDialog.show(context, controller: controller, postId: postId);
+  }
+}
+
+class PostDetailDialog extends StatefulWidget {
+  static show(BuildContext context, {required PostController controller, required int postId}) =>
+      showDialog(
+          context: context, builder: (dContext) => PostDetailDialog(controller, postId));
+  const PostDetailDialog(this.controller, this.postId, {super.key});
+
+  final PostController controller;
+  final int postId;
+
+  @override
+  State<PostDetailDialog> createState() => _PostDetailDialogState();
+}
+
+class _PostDetailDialogState extends State<PostDetailDialog> {
+  Post? post;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchPostDetail();
+  }
+
+  Future<void> fetchPostDetail() async {
+    Post postDetail = await widget.controller.getPostDetail(widget.postId);
+    setState(() {
+      post = postDetail;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      title: const Text("Post Details"),
+      content: post == null
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Title: ${post!.title}", style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text("Body: ${post!.body}"),
+              ],
+            ),
+      actions: [
+        ElevatedButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text("Close"),
+        )
+      ],
+    );
   }
 }
 
@@ -168,8 +246,6 @@ class _EditPostDialogState extends State<EditPostDialog> {
     );
   }
 }
-
-
 
 class AddPostDialog extends StatefulWidget {
   static show(BuildContext context, {required PostController controller}) =>
@@ -305,6 +381,30 @@ class PostController with ChangeNotifier {
     }
   }
 
+  Future<Post> getPostDetail(int postId) async {
+    try {
+      working = true;
+      notifyListeners();
+      http.Response res = await HttpService.get(
+          url: "https://jsonplaceholder.typicode.com/posts/$postId");
+      if (res.statusCode != 200 && res.statusCode != 201) {
+        throw Exception("${res.statusCode} | ${res.body}");
+      }
+      Map<String, dynamic> result = jsonDecode(res.body);
+      Post postDetail = Post.fromJson(result);
+      working = false;
+      notifyListeners();
+      return postDetail;
+    } catch (e, st) {
+      print(e);
+      print(st);
+      error = e;
+      working = false;
+      notifyListeners();
+      return Post.empty;
+    }
+  }
+
    Future<void> deletePost(int postId) async {
     try {
       working = true;
@@ -413,7 +513,8 @@ class HttpService {
       'Content-Type': 'application/json',
       if (headers != null) ...headers
     });
-}
+  }
+
   static Future<http.Response> delete(
       {required String url, Map<String, dynamic>? headers}) async {
     Uri uri = Uri.parse(url);
@@ -421,7 +522,8 @@ class HttpService {
       'Content-Type': 'application/json',
       if (headers != null) ...headers
     });
-}
+  }
+
   static Future<http.Response> put(
       {required String url,
       required Map<dynamic, dynamic> body,
@@ -431,5 +533,5 @@ class HttpService {
       'Content-Type': 'application/json',
       if (headers != null) ...headers
     });
-}
+  }
 }
