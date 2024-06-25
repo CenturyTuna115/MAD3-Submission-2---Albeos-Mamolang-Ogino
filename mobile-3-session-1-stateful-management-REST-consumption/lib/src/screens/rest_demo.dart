@@ -28,87 +28,95 @@ class _RestDemoScreenState extends State<RestDemoScreen> {
       appBar: AppBar(
         title: const Text("Posts"),
         leading: IconButton(
-            onPressed: () {
-              controller.getPosts();
-            },
-            icon: const Icon(Icons.refresh)),
+          onPressed: () {
+            controller.getPosts();
+          },
+          icon: const Icon(Icons.refresh),
+        ),
         actions: [
           IconButton(
-              onPressed: () {
-                showNewPostFunction(context);
-              },
-              icon: const Icon(Icons.add))
+            onPressed: () {
+              showNewPostFunction(context);
+            },
+            icon: const Icon(Icons.add),
+          )
         ],
       ),
       body: SafeArea(
         child: ListenableBuilder(
-            listenable: controller,
-            builder: (context, _) {
-              if (controller.error != null) {
-                return Center(
-                  child: Text(controller.error.toString()),
-                );
-              }
+          listenable: controller,
+          builder: (context, _) {
+            if (controller.error != null) {
+              return Center(
+                child: Text(controller.error.toString()),
+              );
+            }
 
-              if (!controller.working) {
-                return Center(
-                  child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: controller.postList.length,
-                      itemBuilder: (context, index) {
-                        Post post = controller.postList[index];
-                        return Container(
-                          padding: const EdgeInsets.all(8),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                              border: Border.all(color: Colors.blueAccent),
-                              borderRadius: BorderRadius.circular(16)),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+            if (!controller.working) {
+              return Center(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: controller.postList.length,
+                  itemBuilder: (context, index) {
+                    Post post = controller.postList[index];
+                    return Container(
+                      padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.blueAccent),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            post.title,
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 8),
+                          Text(post.body, maxLines: 2, overflow: TextOverflow.ellipsis),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(post.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                              SizedBox(height: 8),
-                              Text(post.body, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              TextButton(
+                                onPressed: () {
+                                  viewDetails(context, post.id);
+                                },
+                                child: const Text("View Details"),
+                              ),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  TextButton(
+                                  IconButton(
+                                    icon: const Icon(Icons.edit),
                                     onPressed: () {
-                                      viewDetails(context, post.id);
+                                      showEditPostFunction(context, post);
                                     },
-                                    child: const Text("View Details"),
                                   ),
-                                  Row(
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.edit),
-                                        onPressed: () {
-                                          showEditPostFunction(context, post);
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete),
-                                        onPressed: () {
-                                          controller.deletePost(post.id);
-                                        },
-                                      ),
-                                    ],
-                                  )
+                                  IconButton(
+                                    icon: const Icon(Icons.delete),
+                                    onPressed: () {
+                                      controller.deletePost(post.id);
+                                    },
+                                  ),
                                 ],
                               )
                             ],
-                          ),
-                        );
-                      }),
-                );
-              }
-              return const Center(
-                child: SpinKitChasingDots(
-                  size: 54,
-                  color: Colors.black87,
+                          )
+                        ],
+                      ),
+                    );
+                  },
                 ),
               );
-            }),
+            }
+            return const Center(
+              child: SpinKitChasingDots(
+                size: 54,
+                color: Colors.black87,
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -129,7 +137,7 @@ class _RestDemoScreenState extends State<RestDemoScreen> {
 class PostDetailDialog extends StatefulWidget {
   static show(BuildContext context, {required PostController controller, required int postId}) =>
       showDialog(
-          context: context, builder: (dContext) => PostDetailDialog(controller, postId));
+        context: context, builder: (dContext) => PostDetailDialog(controller, postId));
   const PostDetailDialog(this.controller, this.postId, {super.key});
 
   final PostController controller;
@@ -188,7 +196,7 @@ class _PostDetailDialogState extends State<PostDetailDialog> {
 class EditPostDialog extends StatefulWidget {
   static show(BuildContext context, {required PostController controller, required Post post}) =>
       showDialog(
-          context: context, builder: (dContext) => EditPostDialog(controller, post));
+        context: context, builder: (dContext) => EditPostDialog(controller, post));
   const EditPostDialog(this.controller, this.post, {super.key});
 
   final PostController controller;
@@ -200,6 +208,7 @@ class EditPostDialog extends StatefulWidget {
 
 class _EditPostDialogState extends State<EditPostDialog> {
   late TextEditingController bodyC, titleC;
+  final _formKey = GlobalKey<FormState>(); // Add form key for validation
 
   @override
   void initState() {
@@ -216,32 +225,46 @@ class _EditPostDialogState extends State<EditPostDialog> {
       actions: [
         ElevatedButton(
           onPressed: () async {
-            widget.controller.editPost(
+            if (_formKey.currentState!.validate()) { // Validate form
+              widget.controller.editPost(
                 postId: widget.post.id, 
                 title: titleC.text.trim(), 
-                body: bodyC.text.trim());
-            Navigator.of(context).pop();
+                body: bodyC.text.trim()
+              );
+              Navigator.of(context).pop();
+            }
           },
           child: const Text("Save"),
         )
       ],
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("Title"),
-          Flexible(
-            child: TextFormField(
+      content: Form( // Wrap content with Form
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Title"),
+            TextFormField(
               controller: titleC,
+              validator: (value) {
+                if (value!.isEmpty) {
+                  return 'Please enter a title';
+                }
+                return null;
+              },
             ),
-          ),
-          const Text("Content"),
-          Flexible(
-            child: TextFormField(
+            const Text("Content"),
+            TextFormField(
               controller: bodyC,
+              validator: (value) {
+                if (value!.isEmpty) {
+                  return 'Please enter content';
+                }
+                return null;
+              },
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -250,7 +273,7 @@ class _EditPostDialogState extends State<EditPostDialog> {
 class AddPostDialog extends StatefulWidget {
   static show(BuildContext context, {required PostController controller}) =>
       showDialog(
-          context: context, builder: (dContext) => AddPostDialog(controller));
+        context: context, builder: (dContext) => AddPostDialog(controller));
   const AddPostDialog(this.controller, {super.key});
 
   final PostController controller;
@@ -261,6 +284,7 @@ class AddPostDialog extends StatefulWidget {
 
 class _AddPostDialogState extends State<AddPostDialog> {
   late TextEditingController bodyC, titleC;
+  final _formKey = GlobalKey<FormState>(); // Add form key for validation
 
   @override
   void initState() {
@@ -277,30 +301,46 @@ class _AddPostDialogState extends State<AddPostDialog> {
       actions: [
         ElevatedButton(
           onPressed: () async {
-            widget.controller.makePost(
-                title: titleC.text.trim(), body: bodyC.text.trim(), userId: 1);
-            Navigator.of(context).pop();
+            if (_formKey.currentState!.validate()) { // Validate form
+              widget.controller.makePost(
+                title: titleC.text.trim(), 
+                body: bodyC.text.trim(), 
+                userId: 1
+              );
+              Navigator.of(context).pop();
+            }
           },
           child: const Text("Add"),
         )
       ],
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("Title"),
-          Flexible(
-            child: TextFormField(
+      content: Form( // Wrap content with Form
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Title"),
+            TextFormField(
               controller: titleC,
+              validator: (value) {
+                if (value!.isEmpty) {
+                  return 'Please enter a title';
+                }
+                return null;
+              },
             ),
-          ),
-          const Text("Content"),
-          Flexible(
-            child: TextFormField(
+            const Text("Content"),
+            TextFormField(
               controller: bodyC,
+              validator: (value) {
+                if (value!.isEmpty) {
+                  return 'Please enter content';
+                }
+                return null;
+              },
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -410,14 +450,10 @@ class PostController with ChangeNotifier {
       working = true;
       notifyListeners();
       
-      http.Response res = await HttpService.delete(
-          url: "https://jsonplaceholder.typicode.com/posts/$postId");
-      
-      if (res.statusCode != 200 && res.statusCode != 204) {
-        throw Exception("${res.statusCode} | ${res.body}");
-      }
+      // Simulate deletion in UI
+      posts.remove(postId.toString()); // Remove post locally
 
-      posts.remove(postId.toString());
+      // Notify listeners to update UI
       working = false;
       notifyListeners();
     } catch (e, st) {
@@ -534,4 +570,10 @@ class HttpService {
       if (headers != null) ...headers
     });
   }
+}
+
+void main() {
+  runApp(MaterialApp(
+    home: RestDemoScreen(),
+  ));
 }
